@@ -38,12 +38,15 @@ def get_ports(elaboratable):
     ports = []
     metadata = defaultdict(dict)
 
+    print("get_ports...")
+
     for key, value in elaboratable.__dict__.items():
         print(key, type(value), value)
 
         if isinstance(value, Signal):
             ports.append(value)
             metadata["signals"][key] = value
+            metadata["duid"][value.duid] = value.name
 
         elif isinstance(value, stream.Endpoint):
             for name, _, _ in value.layout:
@@ -64,6 +67,7 @@ def get_ports(elaboratable):
 
             metadata["endpoints"][key] = value
 
+    print()
     return ports, metadata
 
 
@@ -87,10 +91,10 @@ def gen_litex(fragment, metadata, name=None, output_dir=None):
         output_dir = ""
 
     params = {}
-    print(metadata["duid"])
 
     # iterate over the instance ports and recreate the mapping
     for sig, direction in fragment.ports.items():
+        print("sig.name", sig.name, sig.duid)
 
         if sig.name == "clk":
             value = "ClockSignal()"
@@ -164,6 +168,9 @@ class {{classname}}(Module):
 def gen_verilog(elaboratable, name=None, output_dir=None):
     ports, metadata = get_ports(elaboratable)
     print("ports", ports)
+    print()
+    print("metadata", metadata)
+    print()
     ver, frag = convert(elaboratable, name=name, ports=ports,
                       emit_src=False, return_fragment=True)
 
