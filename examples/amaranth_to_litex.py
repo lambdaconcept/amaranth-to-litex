@@ -8,23 +8,24 @@ import sys
 sys.path.append(".")
 
 from gateware.cores.counter import Counter as AmaranthCounter
+from gateware.cores.counter import CounterStream as AmaranthCounterStream
 from gateware.wrapper.litex import amaranth_to_litex
 
 
 class Top(Module):
     def __init__(self, platform):
 
-        self.submodules.wcnt = amaranth_to_litex(platform,
-            AmaranthCounter(width=26),
+        self.submodules.cnt = amaranth_to_litex(platform,
+            AmaranthCounterStream(width=26),
         )
 
-        self.comb += self.wcnt.en.eq(1)
+        self.comb += self.cnt.source.ready.eq(1)
 
         led = platform.request("rgb_led", 0)
         self.comb += [
-            led.r.eq(self.wcnt.o),
-            led.g.eq(self.wcnt.o),
-            led.b.eq(self.wcnt.o),
+            led.r.eq(self.cnt.source.data[-1]),
+            led.g.eq(self.cnt.source.data[-1]),
+            led.b.eq(self.cnt.source.data[-1]),
         ]
 
 
