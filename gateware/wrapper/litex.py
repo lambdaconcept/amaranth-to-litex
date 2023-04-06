@@ -14,7 +14,11 @@ from amaranth.back.verilog import convert_fragment
 from ..interface import stream
 
 
-__all__ = ["amaranth_to_litex"]
+__all__ = [
+    "amaranth_to_litex",
+    "amaranth_pins_from_litex",
+    "amaranth_connect_pins",
+]
 
 
 # adapted from https://github.com/amaranth-lang/amaranth/blob/main/amaranth/back/verilog.py
@@ -46,18 +50,20 @@ def get_ports(elaboratable):
         if isinstance(value, Signal):
             ports.append(value)
             metadata["signals"][key] = value
-            metadata["duid"][value.duid] = value.name
+            metadata["duid"][value.duid] = key # value.name
 
-        elif isinstance(value, stream.Endpoint):
+        elif isinstance(value, stream.Endpoint) or \
+             isinstance(value, Record):
+
+            print(value.name)
+
             for name, _, _ in value.layout:
                 field = value[name]
 
-                # valid, ready, first, last
                 if isinstance(field, Signal):
                     ports.append(field)
                     metadata["duid"][field.duid] = "{}.{}".format(key, name)
 
-                # payload
                 elif isinstance(field, Record):
                     for subname, _, _ in field.layout:
                         subfield = field[subname]
@@ -65,10 +71,20 @@ def get_ports(elaboratable):
                         ports.append(subfield)
                         metadata["duid"][subfield.duid] = "{}.{}".format(key, subname)
 
-            metadata["endpoints"][key] = value
+            if isinstance(value, stream.Endpoint):
+                metadata["endpoints"][key] = value
+            elif isinstance(value, Record):
+                metadata["records"][key] = value
 
     print()
     return ports, metadata
+
+
+def get_record_description(record):
+    desc = []
+    for name, shape, _ in record.layout:
+        desc.append("({!r}, {!r})".format(name, shape))
+    return "[{}]".format(", ".join(desc))
 
 
 def get_endpoint_description(endpoint):
@@ -119,8 +135,13 @@ class {{classname}}(Module):
     def __init__(self, platform):
 
         # Signals
-    {% for sig in signals.values() %}
-        self.{{sig.name}} = Signal({{sig.width}})
+    {% for name, sig in signals.items() %}
+        self.{{name}} = Signal({{sig.width}})
+    {% endfor %}
+
+        # Records
+    {% for name, rec in records.items() %}
+        self.{{name}} = Record({{get_record_description(rec)}})
     {% endfor %}
 
         # Endpoints
@@ -148,10 +169,12 @@ class {{classname}}(Module):
         instancename=name,
         output_dir=output_dir,
         signals=metadata["signals"],
+        records=metadata["records"],
         endpoints=metadata["endpoints"],
         params=params,
 
         # utility functions
+        get_record_description=get_record_description,
         get_endpoint_description=get_endpoint_description,
     ))
 
@@ -182,6 +205,53 @@ def gen_verilog(elaboratable, name=None, output_dir=None):
     return frag, metadata
 
 
+def amaranth_connect_pins(litex_pads, amaranth_pins, litex_instance):
+    statements = []
+
+    # create a lookup table for fast indexing (litex pad signal)
+    lookup_pads = {}
+    for name, shape in litex_pads.layout:
+        sig = getattr(litex_pads, name)
+        lookup_pads[name] = sig
+    print("lookup_pads", lookup_pads)
+
+    # create a lookup table for fast indexing (pin direction)
+    lookup_direction = {}
+    for sig, direction in litex_instance.fragment.ports.items():
+        lookup_direction[sig.duid] = direction
+
+    # iterate over the amaranth pins
+    for name, _, _ in amaranth_pins.layout:
+        sig = amaranth_pins[name]
+        dot_name = litex_instance.metadata["duid"][sig.duid]
+        pad_name = dot_name.split(".")[-1]
+
+        # get the pad
+        pad = lookup_pads[pad_name]
+        direction = lookup_direction[sig.duid]
+
+        # find the litex signal
+        obj = litex_instance
+        for member in dot_name.split("."):
+            obj = getattr(obj, member)
+
+        if direction == "i":
+            statements.append(obj.eq(pad))
+        elif direction == "o":
+            statements.append(pad.eq(obj))
+        else:
+            raise NotImplementedError
+
+        print("sig.name", sig.name, sig.duid, direction, pad_name, pad)
+
+    print()
+    return statements
+
+
+def amaranth_pins_from_litex(pins):
+    return Record(pins.layout, name="__pins__" + pins.name)
+
+
 def amaranth_to_litex(platform, elaboratable, name=None, output_dir=None):
     if name is None:
         name = elaboratable.__class__.__name__
@@ -189,9 +259,13 @@ def amaranth_to_litex(platform, elaboratable, name=None, output_dir=None):
         output_dir = "build"
 
     fragment, metadata = gen_verilog(elaboratable, name=name, output_dir=output_dir)
-    cls = gen_litex(fragment, metadata, name=name, output_dir=output_dir)
+    litex_class = gen_litex(fragment, metadata, name=name, output_dir=output_dir)
 
-    return cls(platform)
+    litex_instance = litex_class(platform)
+    litex_instance.fragment = fragment
+    litex_instance.metadata = metadata
+
+    return litex_instance
 
 
 if __name__ == "__main__":
