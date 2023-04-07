@@ -3,6 +3,7 @@
 import os
 import sys
 import jinja2
+import logging
 import textwrap
 import importlib.util
 from collections import defaultdict
@@ -19,6 +20,11 @@ __all__ = [
     "amaranth_pins_from_litex",
     "amaranth_autoconnect_pins",
 ]
+
+
+logging.basicConfig()
+logger = logging.getLogger()
+# logger.setLevel(logging.INFO)
 
 
 # adapted from https://github.com/amaranth-lang/amaranth/blob/main/amaranth/back/verilog.py
@@ -42,10 +48,8 @@ def get_ports(elaboratable):
     ports = []
     metadata = defaultdict(dict)
 
-    print("get_ports...")
-
     for key, value in elaboratable.__dict__.items():
-        print(key, type(value), value)
+        logger.info("key: %s, type: %s, value: %s", key, type(value), value)
 
         if isinstance(value, Signal):
             ports.append(value)
@@ -54,8 +58,6 @@ def get_ports(elaboratable):
 
         elif isinstance(value, stream.Endpoint) or \
              isinstance(value, Record):
-
-            print(value.name)
 
             for name, _, _ in value.layout:
                 field = value[name]
@@ -81,7 +83,6 @@ def get_ports(elaboratable):
                 if hasattr(value, "__litex_pads"):
                     metadata["pins"][key] = value
 
-    print()
     return ports, metadata
 
 
@@ -115,7 +116,7 @@ def gen_litex(fragment, metadata, name=None, output_dir=None):
 
     # iterate over the instance ports and recreate the signal mapping
     for sig, direction in fragment.ports.items():
-        print("sig.name", sig.name, sig.duid)
+        logger.info("sig.name: %s, duid: %s", sig.name, sig.duid)
 
         if sig.name == "clk":
             value = "ClockSignal()"
@@ -195,10 +196,8 @@ class {{classname}}(Module):
 
 def gen_verilog(elaboratable, name=None, output_dir=None):
     ports, metadata = get_ports(elaboratable)
-    print("ports", ports)
-    print()
-    print("metadata", metadata)
-    print()
+    logger.info("ports: %s", ports)
+    logger.info("metadata: %s", metadata)
     ver, frag = convert(elaboratable, name=name, ports=ports,
                       emit_src=False, return_fragment=True)
 
@@ -226,7 +225,7 @@ def amaranth_autoconnect_pins(litex_instance):
         for name, shape in litex_pads.layout:
             sig = getattr(litex_pads, name)
             lookup_pads[name] = sig
-        print("lookup_pads", lookup_pads)
+        logger.info("lookup_pads: %s", lookup_pads)
 
         # iterate over the amaranth pins
         for name, _, _ in amaranth_pins.layout:
@@ -250,7 +249,7 @@ def amaranth_autoconnect_pins(litex_instance):
             else:
                 raise NotImplementedError
 
-            print("sig.name", sig.name, sig.duid, direction, pad_name, pad)
+            logger.info("comb: %s, %s, %s, %s", sig, direction, pad, obj)
 
     litex_instance.comb += statements
 
