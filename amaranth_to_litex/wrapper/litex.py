@@ -12,7 +12,7 @@ from amaranth import *
 from amaranth.hdl import ir
 from amaranth.back.verilog import convert_fragment
 
-from ..interface import stream
+from lambdasoc.interface import stream
 
 
 __all__ = [
@@ -22,7 +22,7 @@ __all__ = [
 ]
 
 
-logging.basicConfig()
+# logging.basicConfig()
 logger = logging.getLogger()
 # logger.setLevel(logging.INFO)
 
@@ -56,9 +56,7 @@ def get_ports(elaboratable):
             metadata["signals"][key] = value
             metadata["duid"][value.duid] = key # value.name
 
-        elif isinstance(value, stream.Endpoint) or \
-             isinstance(value, Record):
-
+        elif isinstance(value, Record):
             for name, _, _ in value.layout:
                 field = value[name]
 
@@ -186,6 +184,7 @@ class {{classname}}(Module):
 
     # write python file
     filename = os.path.join(output_dir, name + ".py")
+    os.makedirs(output_dir, exist_ok=True)
     with open(filename, "w") as f:
         f.write(output)
 
@@ -203,6 +202,7 @@ def gen_verilog(elaboratable, name=None, output_dir=None):
 
     # write verilog file
     filename = os.path.join(output_dir, name + ".v")
+    os.makedirs(output_dir, exist_ok=True)
     with open(filename, "w") as f:
         f.write(ver)
 

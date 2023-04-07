@@ -1,4 +1,4 @@
 __pycache__
-build*
-tests/*.vcd
-*.ipynb
+/*.egg-info
+/.eggs
+/build*

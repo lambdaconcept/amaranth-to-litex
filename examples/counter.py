@@ -1,6 +1,6 @@
 from amaranth import *
 
-from ..interface import stream
+from lambdasoc.interface import stream
 
 
 # https://github.com/amaranth-lang/amaranth/blob/main/examples/basic/ctr_en.py
@@ -39,25 +39,3 @@ class CounterStream(Elaboratable):
         ]
 
         return m
-
-
-from amaranth.sim import *
-
-
-def test():
-    dut = CounterStream(8)
-    sim = Simulator(dut)
-
-    def bench():
-        yield dut.source.ready.eq(1)
-        for i in range(1000):
-            yield
-
-    sim.add_clock(1e-6)
-    sim.add_sync_process(bench)
-    with sim.write_vcd("tests/cores/counter.vcd"):
-        sim.run()
-
-
-if __name__ == "__main__":
-    test()
