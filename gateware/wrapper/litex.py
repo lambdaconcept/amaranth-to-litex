@@ -17,7 +17,7 @@ from ..interface import stream
 __all__ = [
     "amaranth_to_litex",
     "amaranth_pins_from_litex",
-    "amaranth_connect_pins",
+    "amaranth_autoconnect_pins",
 ]
 
 
@@ -76,6 +76,11 @@ def get_ports(elaboratable):
             elif isinstance(value, Record):
                 metadata["records"][key] = value
 
+                # we recognise amaranth pins as a special record
+                # that contains our private member __litex_pads.
+                if hasattr(value, "__litex_pads"):
+                    metadata["pins"][key] = value
+
     print()
     return ports, metadata
 
@@ -108,7 +113,7 @@ def gen_litex(fragment, metadata, name=None, output_dir=None):
 
     params = {}
 
-    # iterate over the instance ports and recreate the mapping
+    # iterate over the instance ports and recreate the signal mapping
     for sig, direction in fragment.ports.items():
         print("sig.name", sig.name, sig.duid)
 
@@ -205,54 +210,61 @@ def gen_verilog(elaboratable, name=None, output_dir=None):
     return frag, metadata
 
 
-def amaranth_connect_pins(litex_pads, amaranth_pins, litex_instance):
+def amaranth_autoconnect_pins(litex_instance):
     statements = []
-
-    # create a lookup table for fast indexing (litex pad signal)
-    lookup_pads = {}
-    for name, shape in litex_pads.layout:
-        sig = getattr(litex_pads, name)
-        lookup_pads[name] = sig
-    print("lookup_pads", lookup_pads)
 
     # create a lookup table for fast indexing (pin direction)
     lookup_direction = {}
-    for sig, direction in litex_instance.fragment.ports.items():
+    for sig, direction in litex_instance.__fragment.ports.items():
         lookup_direction[sig.duid] = direction
 
-    # iterate over the amaranth pins
-    for name, _, _ in amaranth_pins.layout:
-        sig = amaranth_pins[name]
-        dot_name = litex_instance.metadata["duid"][sig.duid]
-        pad_name = dot_name.split(".")[-1]
+    for amaranth_pins in litex_instance.__metadata["pins"].values():
+        litex_pads = amaranth_pins.__litex_pads
 
-        # get the pad
-        pad = lookup_pads[pad_name]
-        direction = lookup_direction[sig.duid]
+        # create a lookup table for fast indexing (litex pad signal)
+        lookup_pads = {}
+        for name, shape in litex_pads.layout:
+            sig = getattr(litex_pads, name)
+            lookup_pads[name] = sig
+        print("lookup_pads", lookup_pads)
 
-        # find the litex signal
-        obj = litex_instance
-        for member in dot_name.split("."):
-            obj = getattr(obj, member)
+        # iterate over the amaranth pins
+        for name, _, _ in amaranth_pins.layout:
+            sig = amaranth_pins[name]
+            dot_name = litex_instance.__metadata["duid"][sig.duid]
+            pad_name = dot_name.split(".")[-1]
 
-        if direction == "i":
-            statements.append(obj.eq(pad))
-        elif direction == "o":
-            statements.append(pad.eq(obj))
-        else:
-            raise NotImplementedError
+            # get the pad
+            pad = lookup_pads[pad_name]
+            direction = lookup_direction[sig.duid]
 
-        print("sig.name", sig.name, sig.duid, direction, pad_name, pad)
+            # find the litex signal
+            obj = litex_instance
+            for member in dot_name.split("."):
+                obj = getattr(obj, member)
 
-    print()
-    return statements
+            if direction == "i":
+                statements.append(obj.eq(pad))
+            elif direction == "o":
+                statements.append(pad.eq(obj))
+            else:
+                raise NotImplementedError
+
+            print("sig.name", sig.name, sig.duid, direction, pad_name, pad)
+
+    litex_instance.comb += statements
 
 
-def amaranth_pins_from_litex(pins):
-    return Record(pins.layout, name="__pins__" + pins.name)
+def amaranth_pins_from_litex(pads):
+    rec = Record(pads.layout, name="__pins__" + pads.name)
+    # Add a private member to the amaranth pins record to remember
+    # this is a conversion from a litex pads record.
+    rec.__litex_pads = pads
+    return rec
 
 
-def amaranth_to_litex(platform, elaboratable, name=None, output_dir=None):
+def amaranth_to_litex(platform, elaboratable, name=None, output_dir=None,
+                      autoconnect_pins=False):
     if name is None:
         name = elaboratable.__class__.__name__
     if output_dir is None:
@@ -262,8 +274,14 @@ def amaranth_to_litex(platform, elaboratable, name=None, output_dir=None):
     litex_class = gen_litex(fragment, metadata, name=name, output_dir=output_dir)
 
     litex_instance = litex_class(platform)
-    litex_instance.fragment = fragment
-    litex_instance.metadata = metadata
+    # Add private metadata members to the litex instance to remember
+    # this is a conversion from an amaranth module.
+    # These information will be useful later when matching pins/pads.
+    litex_instance.__fragment = fragment
+    litex_instance.__metadata = metadata
+
+    if autoconnect_pins:
+        amaranth_autoconnect_pins(litex_instance)
 
     return litex_instance
 
