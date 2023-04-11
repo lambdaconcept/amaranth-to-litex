@@ -33,4 +33,4 @@ Supported interfaces:
 
 * Signal
 * Record
-* stream.Endpoint (lambdasoc)
+* stream.Endpoint

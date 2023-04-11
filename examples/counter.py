@@ -1,6 +1,6 @@
 from amaranth import *
 
-from lambdasoc.interface import stream
+from lambdalib.interface import stream
 
 
 # https://github.com/amaranth-lang/amaranth/blob/main/examples/basic/ctr_en.py

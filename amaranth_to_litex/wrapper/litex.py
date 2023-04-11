@@ -12,11 +12,10 @@ from amaranth import *
 from amaranth.hdl import ir
 from amaranth.back.verilog import convert_fragment
 
-from lambdasoc.interface import stream
-
 
 __all__ = [
     "amaranth_to_litex",
+    "amaranth_signal",
     "amaranth_pins_from_litex",
     "amaranth_autoconnect_pins",
 ]
@@ -37,6 +36,14 @@ def convert(elaboratable, name="top", platform=None, ports=None, *, emit_src=Tru
         return verilog_text, fragment
 
     return verilog_text
+
+
+def isinstance_endpoint(record):
+    required = {"valid", "ready", "payload"}
+    for field in required:
+        if not hasattr(record, field):
+            return False
+    return True
 
 
 def get_ports(elaboratable):
@@ -71,7 +78,7 @@ def get_ports(elaboratable):
                         ports.append(subfield)
                         metadata["duid"][subfield.duid] = "{}.{}".format(key, subname)
 
-            if isinstance(value, stream.Endpoint):
+            if isinstance_endpoint(value):
                 metadata["endpoints"][key] = value
             elif isinstance(value, Record):
                 metadata["records"][key] = value
@@ -252,6 +259,10 @@ def amaranth_autoconnect_pins(litex_instance):
             logger.info("comb: %s, %s, %s, %s", sig, direction, pad, obj)
 
     litex_instance.comb += statements
+
+
+def amaranth_signal(*args, **kwargs):
+    return Signal(*args, **kwargs)
 
 
 def amaranth_pins_from_litex(pads):
