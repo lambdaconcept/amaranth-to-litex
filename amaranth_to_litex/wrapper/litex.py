@@ -23,7 +23,7 @@ __all__ = [
 
 # logging.basicConfig()
 logger = logging.getLogger()
-# logger.setLevel(logging.INFO)
+# logger.setLevel(logging.DEBUG)
 
 
 # adapted from https://github.com/amaranth-lang/amaranth/blob/main/amaranth/back/verilog.py
@@ -56,7 +56,7 @@ def get_ports(elaboratable):
     metadata = defaultdict(dict)
 
     for key, value in elaboratable.__dict__.items():
-        logger.info("key: %s, type: %s, value: %s", key, type(value), value)
+        logger.debug("key: %s, type: %s, value: %s", key, type(value), value)
 
         if isinstance(value, Signal):
             ports.append(value)
@@ -121,7 +121,7 @@ def gen_litex(fragment, metadata, name=None, output_dir=None):
 
     # iterate over the instance ports and recreate the signal mapping
     for sig, direction in fragment.ports.items():
-        logger.info("sig.name: %s, duid: %s", sig.name, sig.duid)
+        logger.debug("sig.name: %s, duid: %s", sig.name, sig.duid)
 
         if sig.name == "clk":
             value = "ClockSignal()"
@@ -202,8 +202,8 @@ class {{classname}}(Module):
 
 def gen_verilog(elaboratable, name=None, output_dir=None):
     ports, metadata = get_ports(elaboratable)
-    logger.info("ports: %s", ports)
-    logger.info("metadata: %s", metadata)
+    logger.debug("ports: %s", ports)
+    logger.debug("metadata: %s", metadata)
     ver, frag = convert(elaboratable, name=name, ports=ports,
                       emit_src=False, return_fragment=True)
 
@@ -232,7 +232,7 @@ def amaranth_autoconnect_pins(litex_instance):
         for name, shape in litex_pads.layout:
             sig = getattr(litex_pads, name)
             lookup_pads[name] = sig
-        logger.info("lookup_pads: %s", lookup_pads)
+        logger.debug("lookup_pads: %s", lookup_pads)
 
         # iterate over the amaranth pins
         for name, _, _ in amaranth_pins.layout:
@@ -256,7 +256,7 @@ def amaranth_autoconnect_pins(litex_instance):
             else:
                 raise NotImplementedError
 
-            logger.info("comb: %s, %s, %s, %s", sig, direction, pad, obj)
+            logger.debug("comb: %s, %s, %s, %s", sig, direction, pad, obj)
 
     litex_instance.comb += statements
 
