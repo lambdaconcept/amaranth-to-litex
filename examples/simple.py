@@ -26,7 +26,7 @@ def main():
 
     platform = lambdaconcept_ecpix5.Platform(device="85F")
     top = Top(platform)
-    platform.build(top)
+    platform.build(top, build_dir="build.simple")
 
 
 if __name__ == "__main__":
