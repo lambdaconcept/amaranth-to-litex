@@ -2,6 +2,7 @@
 
 import os
 import sys
+import zlib
 import jinja2
 import pprint
 import logging
@@ -50,6 +51,29 @@ def isinstance_endpoint(record):
         if not hasattr(record, field):
             return False
     return True
+
+
+def gen_module_name(elaboratable):
+    # Make a hash of all the parameters contained in the elaboratable
+    # to generate a unique but reproducable suffix name.
+    # Converting twice the same Amaranth module instanciated with the
+    # same parameters will yield the same name and thus generate
+    # only one verilog.
+    basename = elaboratable.__class__.__name__
+
+    attrs = []
+    for key, value in elaboratable.__dict__.items():
+        if not key.startswith("_"):
+            attrs.append(key)
+            attrs.append(str(value))
+
+    mangle = bytes("_".join(attrs), encoding="ascii")
+    suffix = hex(zlib.crc32(mangle))[2:]
+
+    logger.debug("mangle: %s", mangle)
+    logger.debug("suffix: %s", suffix)
+
+    return "{}_{}".format(basename, suffix)
 
 
 def get_ports(elaboratable):
@@ -401,7 +425,7 @@ def amaranth_pins_from_litex(pads, dirs=None):
 def amaranth_to_litex(platform, elaboratable, name=None, output_dir=None,
                       autoconnect_pads=True):
     if name is None:
-        name = elaboratable.__class__.__name__
+        name = gen_module_name(elaboratable)
     if output_dir is None:
         output_dir = "build"
 
