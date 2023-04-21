@@ -92,6 +92,12 @@ def get_ports(elaboratable):
                 else:
                     metadata["records"][key] = value
 
+        elif isinstance(value, int)   or \
+             isinstance(value, float) or \
+             isinstance(value, str):
+             if not key.startswith("_"):
+                metadata["constants"][key] = value
+
     return ports, metadata
 
 
@@ -267,6 +273,12 @@ class {{classname}}(Module):
         self.{{name}} = stream.Endpoint({{get_endpoint_description(ep)}})
     {% endfor %}
 
+        # Constants
+
+    {% for name, value in constants.items() %}
+        self.{{name}} = {{value.__repr__()}}
+    {% endfor %}
+
         # # #
 
         params = dict(
@@ -307,6 +319,7 @@ class {{classname}}(Module):
         pins=metadata["pins"],
         records=metadata["records"],
         endpoints=metadata["endpoints"],
+        constants=metadata["constants"],
         params=params,
         tristates=tristates,
         connects=connects,
