@@ -278,7 +278,7 @@ class {{classname}}(Module):
         # Signals
 
     {% for name, sig in signals.items() %}
-        self.{{name}} = Signal({{sig.width}})
+        self.{{name}} = Signal({{sig.width}}, reset={{sig.reset}}, reset_less={{sig.reset_less}})
     {% endfor %}
 
         # Pins
