@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-# logging.basicConfig()
+logging.basicConfig()
 logger = logging.getLogger()
 # logger.setLevel(logging.DEBUG)
 pp = pprint.PrettyPrinter(indent=4, compact=False)
@@ -272,6 +272,16 @@ from migen import *
 
 from litex.soc.interconnect import stream
 
+# Verilog interface
+
+\"\"\"
+{{classname}} my_{{classname.lower()}}(
+{% for i, (k, v) in enumerate(params.items()) %}
+    {{".{}()".format(k[2:])}}{{"," if i < len(params)-1 else ""}}
+{% endfor %}
+);
+\"\"\"
+
 class {{classname}}(Module):
     def __init__(self, platform):
 
@@ -353,6 +363,8 @@ class {{classname}}(Module):
         # utility functions
         get_record_description=get_record_description,
         get_endpoint_description=get_endpoint_description,
+        enumerate=enumerate,
+        len=len,
     ))
 
     # write python file
@@ -366,6 +378,29 @@ class {{classname}}(Module):
     return getattr(module, name)
 
 
+"""
+def rename_hierachy(ver):
+    import re
+
+    hierarchy = None
+    mapping = {}
+
+    pat_h = re.compile('\\amaranth\.hierarchy.*"([^"]+)"')
+
+    for line in ver.split("\n"):
+
+        if not hierarchy:
+            match = pat_h.search(line)
+            if match and m.group(1):
+                hierarchy = match
+
+        elif hierarchy:
+            pass
+
+    return ver
+"""
+
+
 def gen_verilog(elaboratable, name=None, output_dir=None):
     ports, metadata = get_ports(elaboratable)
     logger.debug("ports: \n%s", pp.pformat(ports))
@@ -373,6 +408,14 @@ def gen_verilog(elaboratable, name=None, output_dir=None):
     ver, frag = convert(elaboratable, name=name, ports=ports,
                       emit_src=False, use_hierarchy_name=True,
                       return_fragment=True)
+
+    # two = rename_hierachy(ver)
+
+    # # write verilog file
+    # filename = os.path.join(output_dir, name + ".two")
+    # os.makedirs(output_dir, exist_ok=True)
+    # with open(filename, "w") as f:
+    #     f.write(two)
 
     # write verilog file
     filename = os.path.join(output_dir, name + ".v")
