@@ -31,12 +31,10 @@ pp = pprint.PrettyPrinter(indent=4, compact=False)
 
 # adapted from https://github.com/amaranth-lang/amaranth/blob/main/amaranth/back/verilog.py
 def convert(elaboratable, name="top", platform=None, ports=None, *, emit_src=True,
-            strip_internal_attrs=False, use_hierarchy_name=False,
-            return_fragment=False, **kwargs):
+            strip_internal_attrs=False, return_fragment=False, **kwargs):
     fragment = ir.Fragment.get(elaboratable, platform).prepare(ports=ports, **kwargs)
     verilog_text, name_map = convert_fragment(fragment, name, emit_src=emit_src,
-                                              strip_internal_attrs=strip_internal_attrs,
-                                              use_hierarchy_name=use_hierarchy_name)
+                                              strip_internal_attrs=strip_internal_attrs)
     if return_fragment:
         return verilog_text, fragment
 
@@ -406,8 +404,7 @@ def gen_verilog(elaboratable, name=None, output_dir=None):
     logger.debug("ports: \n%s", pp.pformat(ports))
     logger.debug("metadata: %s", pp.pformat(metadata))
     ver, frag = convert(elaboratable, name=name, ports=ports,
-                      emit_src=False, use_hierarchy_name=True,
-                      return_fragment=True)
+                      emit_src=False, return_fragment=True)
 
     # two = rename_hierachy(ver)
 
