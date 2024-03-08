@@ -376,43 +376,12 @@ class {{classname}}(Module):
     return getattr(module, name)
 
 
-"""
-def rename_hierachy(ver):
-    import re
-
-    hierarchy = None
-    mapping = {}
-
-    pat_h = re.compile('\\amaranth\.hierarchy.*"([^"]+)"')
-
-    for line in ver.split("\n"):
-
-        if not hierarchy:
-            match = pat_h.search(line)
-            if match and m.group(1):
-                hierarchy = match
-
-        elif hierarchy:
-            pass
-
-    return ver
-"""
-
-
 def gen_verilog(elaboratable, name=None, output_dir=None):
     ports, metadata = get_ports(elaboratable)
     logger.debug("ports: \n%s", pp.pformat(ports))
     logger.debug("metadata: %s", pp.pformat(metadata))
     ver, frag = convert(elaboratable, name=name, ports=ports,
                       emit_src=False, return_fragment=True)
-
-    # two = rename_hierachy(ver)
-
-    # # write verilog file
-    # filename = os.path.join(output_dir, name + ".two")
-    # os.makedirs(output_dir, exist_ok=True)
-    # with open(filename, "w") as f:
-    #     f.write(two)
 
     # write verilog file
     filename = os.path.join(output_dir, name + ".v")
