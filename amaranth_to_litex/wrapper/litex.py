@@ -20,6 +20,8 @@ __all__ = [
     "amaranth_to_litex",
     "amaranth_signal",
     "amaranth_pins_from_litex",
+
+    "gen_verilog",
 ]
 
 
@@ -376,12 +378,12 @@ class {{classname}}(Module):
     return getattr(module, name)
 
 
-def gen_verilog(elaboratable, name=None, output_dir=None):
+def gen_verilog(elaboratable, name=None, output_dir=None, platform=None):
     ports, metadata = get_ports(elaboratable)
     logger.debug("ports: \n%s", pp.pformat(ports))
     logger.debug("metadata: %s", pp.pformat(metadata))
-    ver, frag = convert(elaboratable, name=name, ports=ports,
-                      emit_src=False, return_fragment=True)
+    ver, frag = convert(elaboratable, name=name, ports=ports, platform=platform,
+                        emit_src=False, return_fragment=True)
 
     # write verilog file
     filename = os.path.join(output_dir, name + ".v")
@@ -438,7 +440,7 @@ def amaranth_to_litex(platform, elaboratable, name=None, output_dir=None,
     if output_dir is None:
         output_dir = "build"
 
-    fragment, metadata = gen_verilog(elaboratable, name=name, output_dir=output_dir)
+    fragment, metadata = gen_verilog(elaboratable, name=name, output_dir=output_dir, platform=platform)
     litex_class = gen_litex(fragment, metadata, name=name, output_dir=output_dir)
 
     litex_instance = litex_class(platform)
