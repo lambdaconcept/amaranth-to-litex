@@ -1,0 +1,24 @@
+[project]
+name = "amaranth_to_litex"
+version = "0.1.0"
+description = "Use amaranth-to-litex to simply import Amaranth code into a Litex project."
+authors = [
+    {name = "Pierre-Olivier Vauboin", email = "po@lambdaconcept.com"},
+]
+dependencies = [
+    "migen @ git+https://github.com/m-labs/migen.git",
+    "jinja2>=3.1.3",
+    "lambdalib @ git+https://github.com/lambdaconcept/lambdalib",
+    "litex-boards @ git+https://github.com/litex-hub/litex-boards.git",
+    "amaranth-yosys>=0.40.0.0.post93",
+]
+requires-python = ">=3.8"
+readme = "README.md"
+license = {text = "Resources"}
+
+[project.urls]
+"Source Code" = "https://github.com/lambdaconcept/amaranth-to-litex"
+"Bug Tracker" = "https://github.com/lambdaconcept/amaranth-to-litex/issues"
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
